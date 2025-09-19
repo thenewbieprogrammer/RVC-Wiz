@@ -1,5 +1,36 @@
 const API_BASE_URL = "http://localhost:8000";
 
+// Authentication interfaces
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface SignupRequest {
+  email: string;
+  username: string;
+  password: string;
+  full_name?: string;
+}
+
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+  full_name?: string;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  message: string;
+  user?: User;
+  token?: string;
+}
+
 export interface UploadResponse {
   filename: string;
   file_path: string;
@@ -40,6 +71,11 @@ export interface VoiceModel {
   epochs: number;
   type: string;
   tags: string[];
+  is_downloaded?: boolean;
+  download_progress?: number;
+  download_error?: string;
+  local_path?: string;
+  created_at?: string;
 }
 
 export interface VoiceModelsResponse {
@@ -168,6 +204,55 @@ class ApiClient {
 
   async getVoiceModelCategories(): Promise<CategoriesResponse> {
     return this.request<CategoriesResponse>("/api/voice-models/categories");
+  }
+
+  // Local Voice Models API methods
+  async getLocalVoiceModels(limit: number = 50): Promise<VoiceModelsResponse> {
+    return this.request<VoiceModelsResponse>(`/api/voice-models/local?limit=${limit}`);
+  }
+
+  async getDownloadedVoiceModels(): Promise<VoiceModelsResponse> {
+    return this.request<VoiceModelsResponse>("/api/voice-models/local/downloaded");
+  }
+
+  async syncVoiceModels(limit: number = 50): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/voice-models/sync?limit=${limit}`, {
+      method: "POST",
+    });
+  }
+
+  async downloadVoiceModel(modelId: number): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/voice-models/download/${modelId}`, {
+      method: "POST",
+    });
+  }
+
+  async deleteVoiceModel(modelId: number): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>(`/api/voice-models/${modelId}`, {
+      method: "DELETE",
+    });
+  }
+
+  async getVoiceModelStats(): Promise<{ success: boolean; stats: any }> {
+    return this.request<{ success: boolean; stats: any }>("/api/voice-models/stats");
+  }
+
+  async getDownloadStatus(modelId: number): Promise<{ 
+    success: boolean; 
+    model_id: number; 
+    is_downloaded: boolean; 
+    download_progress: number; 
+    download_error?: string; 
+    local_path?: string; 
+  }> {
+    return this.request<{ 
+      success: boolean; 
+      model_id: number; 
+      is_downloaded: boolean; 
+      download_progress: number; 
+      download_error?: string; 
+      local_path?: string; 
+    }>(`/api/voice-models/download-status/${modelId}`);
   }
 
   // Text-to-Speech API methods

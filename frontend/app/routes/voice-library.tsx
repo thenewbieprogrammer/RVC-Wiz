@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "@remix-run/react";
 import { 
@@ -16,12 +16,18 @@ import {
   Clock,
   Zap,
   Download,
-  ExternalLink
+  ExternalLink,
+  CheckCircle
 } from "lucide-react";
 import GlassCard from "~/components/GlassCard";
 import { apiClient, type VoiceModel } from "~/utils/api";
+import { useAuth } from "~/contexts/AuthContext";
+import LoadingSpinner from "~/components/LoadingSpinner";
 
 export default function VoiceLibrary() {
+  const { isAuthenticated, isLoading } = useAuth();
+  
+  // All hooks must be called at the top level
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("explore");
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
@@ -30,29 +36,31 @@ export default function VoiceLibrary() {
   const [rickSanchezModels, setRickSanchezModels] = useState<VoiceModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloadingModels, setDownloadingModels] = useState<Set<number>>(new Set());
+  const [notifications, setNotifications] = useState<Array<{id: string, message: string, type: 'success' | 'error'}>>([]);
 
-  const filters = ["Adult", "Female", "Calm", "Male", "Narration", "Friendly", "Professional", "Young", "English", "Japanese"];
-
-  // Load voice models on component mount
+  // Redirect to login if not authenticated
   useEffect(() => {
-    loadVoiceModels();
-  }, []);
+    if (!isLoading && !isAuthenticated) {
+      window.location.href = "/login";
+    }
+  }, [isAuthenticated, isLoading]);
 
-  const loadVoiceModels = async () => {
+  const loadVoiceModels = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Load different types of models in parallel
-      const [topModelsResponse, featuredResponse, rickResponse] = await Promise.all([
-        apiClient.getTopVoiceModels(20),
-        apiClient.getFeaturedVoiceModels(),
-        apiClient.getRickSanchezModels()
-      ]);
-
-      setVoiceModels(topModelsResponse.models || []);
-      setFeaturedModels(featuredResponse.models || []);
-      setRickSanchezModels(rickResponse.models || []);
+      // Load local models from database
+      const localModelsResponse = await apiClient.getLocalVoiceModels(50);
+      const models = localModelsResponse.models || [];
+      
+      setVoiceModels(models);
+      setFeaturedModels(models.filter(model => model.tags?.includes('Featured')));
+      setRickSanchezModels(models.filter(model => 
+        model.character?.toLowerCase().includes('rick') || 
+        model.name?.toLowerCase().includes('rick')
+      ));
 
     } catch (error) {
       console.error("Failed to load voice models:", error);
@@ -94,7 +102,91 @@ export default function VoiceLibrary() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // Function to add notifications
+  const addNotification = useCallback((message: string, type: 'success' | 'error') => {
+    const id = Date.now().toString();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
+  }, []);
+
+  // Function to poll download status for models that are downloading
+  const pollDownloadStatus = useCallback(async (modelId: number) => {
+    try {
+      const status = await apiClient.getDownloadStatus(modelId);
+      
+      // Get the model name for notifications
+      const model = voiceModels.find(m => m.id === modelId.toString());
+      const modelName = model?.name || 'Model';
+      
+      // Update the model in the state
+      setVoiceModels(prev => prev.map(model => 
+        model.id === modelId.toString() 
+          ? { ...model, ...status }
+          : model
+      ));
+      
+      // If download is complete or failed, remove from downloading set and show notification
+      if (status.is_downloaded) {
+        setDownloadingModels(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(modelId);
+          return newSet;
+        });
+        addNotification(`${modelName} downloaded successfully!`, 'success');
+      } else if (status.download_error) {
+        setDownloadingModels(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(modelId);
+          return newSet;
+        });
+        addNotification(`Failed to download ${modelName}`, 'error');
+      }
+    } catch (error) {
+      console.error("Failed to poll download status:", error);
+    }
+  }, [voiceModels, addNotification]);
+
+  // Poll download status for models that are currently downloading
+  useEffect(() => {
+    if (downloadingModels.size === 0) return;
+
+    const interval = setInterval(() => {
+      downloadingModels.forEach(modelId => {
+        pollDownloadStatus(modelId);
+      });
+    }, 2000); // Poll every 2 seconds
+
+    return () => clearInterval(interval);
+  }, [downloadingModels, pollDownloadStatus]);
+
+  // Load voice models on component mount - only if authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      loadVoiceModels();
+    }
+  }, [isAuthenticated, isLoading, loadVoiceModels]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const filters = ["Adult", "Female", "Calm", "Male", "Narration", "Friendly", "Professional", "Young", "English", "Japanese"];
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -139,114 +231,37 @@ export default function VoiceLibrary() {
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-primary-400/5 rounded-full blur-3xl floating" style={{ animationDelay: '2s' }}></div>
       </div>
 
-      {/* Sidebar */}
-      <motion.aside
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="fixed left-0 top-0 h-full w-80 glass-sidebar z-20"
-      >
-        <div className="p-6 h-full flex flex-col">
-          {/* Logo */}
-          <div className="flex items-center space-x-3 mb-8">
-            <div className="p-2 bg-primary-500/20 rounded-xl neon-glow">
-              <Sparkles className="w-6 h-6 text-primary-400" />
-            </div>
-            <span className="text-xl font-bold gradient-text">RVC-Wiz</span>
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 space-y-2">
-            <Link
-              to="/dashboard"
-              className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white/10 transition-colors"
-            >
-              <Mic className="w-5 h-5 text-white/70" />
-              <span>Clone Voice</span>
-            </Link>
-            <Link
-              to="/voice-library"
-              className="flex items-center space-x-3 p-3 rounded-xl bg-primary-500/20 text-primary-400"
-            >
-              <Volume2 className="w-5 h-5" />
-              <span>Voice Library</span>
-            </Link>
-            <Link
-              to="/history"
-              className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white/10 transition-colors"
-            >
-              <Clock className="w-5 h-5 text-white/70" />
-              <span>History</span>
-            </Link>
-          </nav>
-
-          {/* Clone Voice Button */}
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="glass-button bg-primary-500/20 border-primary-400/50 neon-glow-hover mb-6"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            Clone Voice
-          </motion.button>
-
-          {/* Usage Meter */}
-          <div className="glass-card p-4 mb-6">
-            <div className="flex items-center space-x-2 mb-3">
-              <Zap className="w-4 h-4 text-primary-400" />
-              <span className="text-sm font-medium">Usage</span>
-            </div>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-2xl font-bold">114</span>
-              <span className="text-sm text-white/60">/ 1,000</span>
-            </div>
-            <div className="w-full bg-white/10 rounded-full h-2 mb-2">
-              <div className="bg-primary-400 h-2 rounded-full" style={{ width: '11%' }}></div>
-            </div>
-            <div className="flex items-center justify-between text-xs text-white/60">
-              <span>Characters used</span>
-              <Link to="/reset" className="hover:text-white transition-colors">Resets</Link>
-            </div>
-          </div>
-
-          {/* Upgrade Banner */}
-          <div className="glass-card p-4 mb-6 bg-orange-500/10 border-orange-400/20">
-            <div className="text-center">
-              <h4 className="font-semibold mb-2">Upgrade to PRO</h4>
-              <p className="text-sm text-white/70 mb-3">50% OFF</p>
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="w-full glass-button bg-primary-500/20 border-primary-400/50 neon-glow-hover"
-              >
-                <Zap className="w-4 h-4 mr-2" />
-                Upgrade now
-              </motion.button>
-            </div>
-          </div>
-
-          {/* User Account */}
-          <div className="flex items-center space-x-3 p-3 rounded-xl hover:bg-white/10 transition-colors cursor-pointer">
-            <div className="w-8 h-8 bg-primary-500/20 rounded-full flex items-center justify-center">
-              <span className="text-sm font-semibold text-primary-400">BI</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium">Free Plan</p>
-              <p className="text-xs text-white/60">Bilaaln101@gmail...</p>
-            </div>
-            <MoreVertical className="w-4 h-4 text-white/60" />
-          </div>
-        </div>
-      </motion.aside>
-
       {/* Main Content */}
-      <div className="ml-80 p-6">
+      <div className="p-6">
         {/* Header */}
         <motion.header
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-4xl font-bold mb-4">Voice Library</h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-4xl font-bold">Voice Library</h1>
+            <div className="flex space-x-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={async () => {
+                  try {
+                    await apiClient.syncVoiceModels(50);
+                    alert("Started syncing models from voice-models.com");
+                    loadVoiceModels(); // Reload models
+                  } catch (error) {
+                    console.error("Sync failed:", error);
+                    alert("Failed to sync models");
+                  }
+                }}
+                className="glass-button bg-blue-500/20 border-blue-400/50 neon-glow-hover"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                Sync Models
+              </motion.button>
+            </div>
+          </div>
           
           {/* Tabs */}
           <div className="flex space-x-1 glass p-1 rounded-xl w-fit">
@@ -410,13 +425,86 @@ export default function VoiceLibrary() {
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <button 
-                      className="glass-button p-2"
-                      onClick={() => window.open(model.download_url, '_blank')}
-                      title="Download Model"
-                    >
-                      <Download className="w-4 h-4" />
-                    </button>
+                    {/* Download Status */}
+                    {model.is_downloaded ? (
+                      <div className="flex items-center space-x-2 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-xs">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>Downloaded</span>
+                      </div>
+                    ) : model.download_error ? (
+                      <div className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center space-x-2 px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-xs">
+                          <span className="w-3 h-3">⚠</span>
+                          <span>Failed</span>
+                        </div>
+                        <button 
+                          className="text-xs text-red-400 hover:text-red-300 underline"
+                          onClick={async () => {
+                            try {
+                              const modelId = parseInt(model.id);
+                              await apiClient.downloadVoiceModel(modelId);
+                              
+                              // Clear error and start downloading
+                              setVoiceModels(prev => prev.map(m => 
+                                m.id === model.id 
+                                  ? { ...m, download_error: undefined, download_progress: 0.01 }
+                                  : m
+                              ));
+                              
+                              setDownloadingModels(prev => new Set(prev).add(modelId));
+                              
+                            } catch (error) {
+                              console.error("Retry download failed:", error);
+                              alert("Failed to retry download");
+                            }
+                          }}
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    ) : model.download_progress && model.download_progress > 0 ? (
+                      <div className="flex flex-col items-end space-y-1">
+                        <div className="flex items-center space-x-2 px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs">
+                          <div className="w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                          <span>{Math.round((model.download_progress || 0) * 100)}%</span>
+                        </div>
+                        <div className="w-20 h-1 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-blue-400 transition-all duration-300 ease-out"
+                            style={{ width: `${(model.download_progress || 0) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <button 
+                        className="glass-button p-2 hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                        onClick={async () => {
+                          try {
+                            const modelId = parseInt(model.id);
+                            await apiClient.downloadVoiceModel(modelId);
+                            
+                            // Add to downloading set to start polling
+                            setDownloadingModels(prev => new Set(prev).add(modelId));
+                            
+                            // Update the model to show it's starting to download
+                            setVoiceModels(prev => prev.map(m => 
+                              m.id === model.id 
+                                ? { ...m, download_progress: 0.01 }
+                                : m
+                            ));
+                            
+                          } catch (error) {
+                            console.error("Download failed:", error);
+                            alert("Failed to start download");
+                          }
+                        }}
+                        title="Download Model"
+                        disabled={downloadingModels.has(parseInt(model.id))}
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
+                    )}
+                    
                     <button 
                       className="glass-button p-2"
                       onClick={() => window.open(model.huggingface_url, '_blank')}
@@ -424,9 +512,20 @@ export default function VoiceLibrary() {
                     >
                       <ExternalLink className="w-4 h-4" />
                     </button>
-                    <button className="glass-button p-2">
-                      <Play className="w-4 h-4" />
-                    </button>
+                    
+                    {model.is_downloaded && (
+                      <button 
+                        className="glass-button p-2 hover:bg-primary-500/20 hover:text-primary-400 transition-colors"
+                        onClick={() => {
+                          // Navigate to voice-clone page with this model selected
+                          window.location.href = `/voice-clone?model=${encodeURIComponent(model.name)}`;
+                        }}
+                        title="Use Model"
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                    )}
+                    
                     <button className="glass-button p-2">
                       <MoreVertical className="w-4 h-4" />
                     </button>
@@ -452,6 +551,36 @@ export default function VoiceLibrary() {
           )}
         </motion.section>
 
+      </div>
+
+      {/* Notifications */}
+      <div className="fixed top-4 right-4 z-50 space-y-2">
+        {notifications.map((notification) => (
+          <motion.div
+            key={notification.id}
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            className={`glass-card p-4 border-l-4 ${
+              notification.type === 'success' 
+                ? 'border-green-400 bg-green-500/10' 
+                : 'border-red-400 bg-red-500/10'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              {notification.type === 'success' ? (
+                <CheckCircle className="w-4 h-4 text-green-400" />
+              ) : (
+                <span className="w-4 h-4 text-red-400">⚠</span>
+              )}
+              <span className={`text-sm font-medium ${
+                notification.type === 'success' ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {notification.message}
+              </span>
+            </div>
+          </motion.div>
+        ))}
       </div>
     </div>
   );

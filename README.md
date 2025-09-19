@@ -9,6 +9,10 @@ A modern RVC Voice Clone application with AI features, built with Remix.js front
 - 🖥️ Cross-platform support (Windows & macOS)
 - ⚡ Real-time audio processing
 - 🎵 High-quality voice synthesis
+- 📥 Voice model downloads from voice-models.com
+- 📊 Real-time download progress tracking
+- 🔄 Background download processing
+- 🎯 Download status indicators and notifications
 
 ## Tech Stack
 
@@ -55,7 +59,7 @@ A modern RVC Voice Clone application with AI features, built with Remix.js front
 
 4. **Install Python dependencies**:
    ```bash
-   pip install fastapi uvicorn python-multipart
+   pip install -r requirements.txt
    ```
 
 5. **Run the backend server**:
@@ -131,6 +135,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 3. **Python Dependencies Issues**:
    - Make sure virtual environment is activated
    - Try: `pip install --upgrade pip` then reinstall dependencies
+   - If you get `ModuleNotFoundError: No module named 'aiohttp'`, run: `venv/Scripts/python.exe -m pip install -r requirements.txt`
 
 4. **Node.js Dependencies Issues**:
    - Delete `node_modules` folder and `package-lock.json`

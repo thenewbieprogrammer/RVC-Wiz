@@ -129,6 +129,8 @@ async def get_local_models(db: Session = Depends(get_db), limit: int = Query(50,
                     "is_downloaded": model.is_downloaded,
                     "download_progress": model.download_progress,
                     "download_error": model.download_error,
+                    "local_path": model.local_path,
+                    "index_path": model.index_path,
                     "created_at": model.created_at.isoformat() if model.created_at else None
                 }
                 for model in models

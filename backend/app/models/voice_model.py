@@ -14,7 +14,8 @@ class VoiceModel(Base):
     download_url = Column(String(500))
     huggingface_url = Column(String(500))
     model_url = Column(String(500))
-    local_path = Column(String(500))  # Path to downloaded model file
+    local_path = Column(String(500))  # Path to downloaded .pth model file
+    index_path = Column(String(500))  # Path to downloaded .index file
     
     # Model metadata
     size = Column(String(50))  # e.g., "245 MB"

@@ -75,6 +75,7 @@ export interface VoiceModel {
   download_progress?: number;
   download_error?: string;
   local_path?: string;
+  index_path?: string;
   created_at?: string;
 }
 

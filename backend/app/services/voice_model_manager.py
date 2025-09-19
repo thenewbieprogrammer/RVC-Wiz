@@ -145,14 +145,24 @@ class VoiceModelManager:
                         with zipfile.ZipFile(file_path, 'r') as zip_ref:
                             zip_ref.extractall(extract_dir)
                         
-                        # Find the actual model file (.pth)
+                        # Find and move both .pth and .index files
+                        pth_file = None
+                        index_file = None
+                        
                         for root, dirs, files in os.walk(extract_dir):
                             for file in files:
                                 if file.endswith('.pth'):
                                     model_file = Path(root) / file
-                                    final_path = model_dir / file
-                                    shutil.move(str(model_file), str(final_path))
-                                    break
+                                    pth_file = model_dir / file
+                                    shutil.move(str(model_file), str(pth_file))
+                                elif file.endswith('.index'):
+                                    index_file_path = Path(root) / file
+                                    index_file = model_dir / file
+                                    shutil.move(str(index_file_path), str(index_file))
+                        
+                        # Use the .pth file as the main model file
+                        if pth_file:
+                            file_path = pth_file
                         
                         # Clean up zip and extracted folder
                         os.remove(file_path)
@@ -161,6 +171,8 @@ class VoiceModelManager:
                     
                     # Update model record
                     model.local_path = str(file_path)
+                    if index_file:
+                        model.index_path = str(index_file)
                     model.is_downloaded = True
                     model.download_progress = 1.0
                     model.download_error = None

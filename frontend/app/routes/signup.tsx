@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "@remix-run/react";
+import { Link, useNavigate } from "@remix-run/react";
 import { 
   Sparkles, 
   Mail, 
@@ -10,10 +10,13 @@ import {
   User,
   CheckCircle
 } from "lucide-react";
+import { useAuth } from "~/contexts/AuthContext";
 
 export default function Signup() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -21,11 +24,41 @@ export default function Signup() {
     confirmPassword: "",
     agreeToTerms: false
   });
+  
+  const { signup } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log("Signup attempt:", formData);
+    setIsLoading(true);
+    setError(null);
+    
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+    
+    // Validate terms agreement
+    if (!formData.agreeToTerms) {
+      setError("Please agree to the terms and conditions");
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      const success = await signup(formData.email, formData.password, formData.name);
+      if (success) {
+        navigate("/home");
+      } else {
+        setError("Signup failed. Please try again.");
+      }
+    } catch (err) {
+      setError("Signup failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

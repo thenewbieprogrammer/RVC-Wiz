@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link } from "@remix-run/react";
+import { Link, useNavigate } from "@remix-run/react";
 import { 
   Sparkles, 
   Mail, 
@@ -9,18 +9,37 @@ import {
   EyeOff,
   ArrowRight
 } from "lucide-react";
+import { useAuth } from "~/contexts/AuthContext";
 
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: "",
     password: ""
   });
+  
+  const { login } = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login attempt:", formData);
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const success = await login(formData.email, formData.password);
+      if (success) {
+        navigate("/home");
+      } else {
+        setError("Invalid email or password");
+      }
+    } catch (err) {
+      setError("Login failed. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -116,16 +135,95 @@ export default function Login() {
                   </Link>
                 </div>
 
+                {/* Error Display */}
+                {error && (
+                  <div className="bg-red-500/10 border border-red-400/30 rounded-xl p-4">
+                    <p className="text-red-300 text-sm">{error}</p>
+                  </div>
+                )}
+
                 {/* Submit Button */}
                 <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ scale: isLoading ? 1 : 1.02 }}
+                  whileTap={{ scale: isLoading ? 1 : 0.98 }}
                   type="submit"
-                  className="w-full glass-button bg-primary-500/20 border-primary-400/50 neon-glow-hover py-3 text-lg font-semibold"
+                  disabled={isLoading}
+                  className="w-full glass-button bg-primary-500/20 border-primary-400/50 neon-glow-hover py-3 text-lg font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Sign In
+                  {isLoading ? (
+                    <div className="flex items-center justify-center space-x-2">
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      <span>Signing In...</span>
+                    </div>
+                  ) : (
+                    "Sign In"
+                  )}
                 </motion.button>
               </form>
+
+              {/* Test Credentials Section */}
+              <div className="mt-6 p-4 bg-blue-500/10 border border-blue-400/30 rounded-xl">
+                <div className="text-center mb-3">
+                  <h3 className="text-sm font-medium text-blue-300 mb-2">Test Credentials</h3>
+                  <p className="text-xs text-blue-200/70">For development testing</p>
+                </div>
+                
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-200/80">Email:</span>
+                    <div className="flex items-center space-x-2">
+                      <code className="text-xs bg-black/20 px-2 py-1 rounded text-blue-100">test@rvcwiz.com</code>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText('test@rvcwiz.com')}
+                        className="text-xs text-blue-300 hover:text-blue-200 transition-colors"
+                        title="Copy email"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, email: 'test@rvcwiz.com' }))}
+                        className="text-xs text-blue-300 hover:text-blue-200 transition-colors"
+                        title="Autofill email"
+                      >
+                        Fill
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-200/80">Password:</span>
+                    <div className="flex items-center space-x-2">
+                      <code className="text-xs bg-black/20 px-2 py-1 rounded text-blue-100">password123</code>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText('password123')}
+                        className="text-xs text-blue-300 hover:text-blue-200 transition-colors"
+                        title="Copy password"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFormData(prev => ({ ...prev, password: 'password123' }))}
+                        className="text-xs text-blue-300 hover:text-blue-200 transition-colors"
+                        title="Autofill password"
+                      >
+                        Fill
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                <button
+                  type="button"
+                  onClick={() => setFormData({ email: 'test@rvcwiz.com', password: 'password123' })}
+                  className="w-full mt-3 text-xs bg-blue-500/20 hover:bg-blue-500/30 border border-blue-400/30 text-blue-200 py-2 rounded-lg transition-colors"
+                >
+                  Autofill All
+                </button>
+              </div>
 
               {/* Divider */}
               <div className="relative my-6">

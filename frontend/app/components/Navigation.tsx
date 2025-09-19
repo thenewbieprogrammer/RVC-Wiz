@@ -8,22 +8,26 @@ import {
   User,
   LogIn,
   UserPlus,
-  Sparkles
+  Sparkles,
+  LogOut
 } from "lucide-react";
+import { useAuth } from "~/contexts/AuthContext";
 
 interface NavigationProps {
   isAuthenticated?: boolean;
 }
 
 export default function Navigation({ isAuthenticated = false }: NavigationProps) {
+  const { logout } = useAuth();
   const location = useLocation();
   
-  const navItems = [
-    { path: "/home", label: "Home", icon: Home },
-    { path: "/voice-clone", label: "Voice Clone", icon: Mic },
-    { path: "/voice-library", label: "Voice Library", icon: Library },
-    { path: "/dashboard", label: "Dashboard", icon: Sparkles },
-  ];
+  const navItems = isAuthenticated 
+    ? [
+        { path: "/home", label: "Home", icon: Home },
+        { path: "/voice-clone", label: "Voice Clone", icon: Mic },
+        { path: "/voice-library", label: "Voice Library", icon: Library },
+      ]
+    : [];
 
   const authItems = [
     { path: "/login", label: "Login", icon: LogIn },
@@ -37,7 +41,7 @@ export default function Navigation({ isAuthenticated = false }: NavigationProps)
       <div className="max-w-8xl mx-auto px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/home" className="flex items-center space-x-3 group">
+          <Link to={isAuthenticated ? "/home" : "/home"} className="flex items-center space-x-3 group">
             <div className="p-2 bg-blue-500/20 rounded-xl group-hover:bg-blue-500/30 transition-colors">
               <Sparkles className="w-6 h-6 text-blue-400" />
             </div>
@@ -88,6 +92,14 @@ export default function Navigation({ isAuthenticated = false }: NavigationProps)
                   <User className="w-4 h-4 text-white/70" />
                   <span className="text-white font-medium hidden sm:inline">Profile</span>
                 </div>
+                <button
+                  onClick={logout}
+                  className="flex items-center space-x-2 px-4 py-2 rounded-xl transition-all duration-200 text-white/70 hover:text-white hover:bg-red-500/20"
+                  title="Logout"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span className="font-medium hidden sm:inline">Logout</span>
+                </button>
               </>
             ) : (
               <div className="flex items-center space-x-2">

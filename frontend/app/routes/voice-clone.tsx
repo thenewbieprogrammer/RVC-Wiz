@@ -1,5 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
+import { redirect } from "@remix-run/node";
 import { 
   Mic, 
   Upload, 
@@ -19,8 +20,12 @@ import AudioPlayer from "~/components/AudioPlayer";
 import LoadingSpinner from "~/components/LoadingSpinner";
 import CustomDropdown from "~/components/CustomDropdown";
 import { apiClient, type Model, type ProcessingRequest, type ProcessingStatus } from "~/utils/api";
+import { useAuth } from "~/contexts/AuthContext";
 
 export default function VoiceClone() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  // All hooks must be called at the top level
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -34,12 +39,7 @@ export default function VoiceClone() {
   const [textToSpeech, setTextToSpeech] = useState<string>("");
   const [isTextMode, setIsTextMode] = useState<boolean>(false);
 
-  // Load models on component mount
-  useEffect(() => {
-    loadModels();
-  }, []);
-
-  const loadModels = async () => {
+  const loadModels = useCallback(async () => {
     try {
       const response = await apiClient.getModels();
       setModels(response.models);
@@ -50,7 +50,35 @@ export default function VoiceClone() {
       console.error("Failed to load models:", error);
       setError("Failed to load voice models");
     }
-  };
+  }, []);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      window.location.href = "/login";
+    }
+  }, [isAuthenticated, isLoading]);
+
+  // Load models on component mount - only if authenticated
+  useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      loadModels();
+    }
+  }, [isAuthenticated, isLoading, loadModels]);
+
+  // Show loading while checking authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Don't render anything if not authenticated (will redirect)
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];

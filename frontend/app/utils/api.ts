@@ -169,6 +169,19 @@ class ApiClient {
   async getVoiceModelCategories(): Promise<CategoriesResponse> {
     return this.request<CategoriesResponse>("/api/voice-models/categories");
   }
+
+  // Text-to-Speech API methods
+  async processTextToSpeech(text: string, modelName: string): Promise<{ task_id: string }> {
+    return this.request<{ task_id: string }>("/api/text-to-speech", {
+      method: "POST",
+      body: JSON.stringify({
+        text,
+        model_name: modelName,
+        enhance_quality: true,
+        noise_reduction: true
+      })
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

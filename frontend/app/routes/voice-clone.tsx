@@ -31,6 +31,8 @@ export default function VoiceClone() {
   const [originalAudioUrl, setOriginalAudioUrl] = useState<string | null>(null);
   const [generatedAudioUrl, setGeneratedAudioUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [textToSpeech, setTextToSpeech] = useState<string>("");
+  const [isTextMode, setIsTextMode] = useState<boolean>(false);
 
   // Load models on component mount
   useEffect(() => {
@@ -75,53 +77,100 @@ export default function VoiceClone() {
   };
 
   const handleProcess = async () => {
-    if (!uploadedFile || !selectedModel) {
-      setError("Please upload an audio file and select a model");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError(null);
-
-    try {
-      const request: ProcessingRequest = {
-        model_name: selectedModel,
-        enhance_quality: true,
-        noise_reduction: true,
-        pitch_shift: 0
-      };
-
-      const response = await apiClient.processAudio(uploadedFile, request);
+    if (isTextMode) {
+      // Handle text-to-speech
+      if (!textToSpeech.trim() || !selectedModel) {
+        setError("Please enter text and select a model");
+        return;
+      }
       
-      const pollStatus = async () => {
-        try {
-          const status = await apiClient.getProcessingStatus(response.task_id);
-          setProcessingStatus(status);
-          
-          if (status.status === "completed" && status.result_file) {
-            const blob = await apiClient.downloadResult(status.result_file);
-            const audioUrl = URL.createObjectURL(blob);
-            setGeneratedAudioUrl(audioUrl);
+      setIsProcessing(true);
+      setError(null);
+      
+      try {
+        // For now, we'll simulate text-to-speech processing
+        // In a real implementation, you'd call your TTS API
+        const response = await apiClient.processTextToSpeech(textToSpeech, selectedModel);
+        
+        const pollStatus = async () => {
+          try {
+            const status = await apiClient.getProcessingStatus(response.task_id);
+            setProcessingStatus(status);
+            
+            if (status.status === "completed" && status.result_file) {
+              const blob = await apiClient.downloadResult(status.result_file);
+              const audioUrl = URL.createObjectURL(blob);
+              setGeneratedAudioUrl(audioUrl);
+              setIsProcessing(false);
+            } else if (status.status === "failed") {
+              setError(status.message);
+              setIsProcessing(false);
+            } else {
+              setTimeout(pollStatus, 1000);
+            }
+          } catch (error) {
+            console.error("Status check failed:", error);
+            setError("Failed to check processing status");
             setIsProcessing(false);
-          } else if (status.status === "failed") {
-            setError(status.message);
-            setIsProcessing(false);
-          } else {
-            setTimeout(pollStatus, 1000);
           }
-        } catch (error) {
-          console.error("Status check failed:", error);
-          setError("Failed to check processing status");
-          setIsProcessing(false);
-        }
-      };
+        };
 
-      pollStatus();
-      
-    } catch (error) {
-      console.error("Processing failed:", error);
-      setError("Failed to start processing");
-      setIsProcessing(false);
+        pollStatus();
+      } catch (error) {
+        console.error("Text-to-speech processing failed:", error);
+        setError("Failed to start text-to-speech processing");
+        setIsProcessing(false);
+      }
+    } else {
+      // Handle audio file processing
+      if (!uploadedFile || !selectedModel) {
+        setError("Please upload an audio file and select a model");
+        return;
+      }
+
+      setIsProcessing(true);
+      setError(null);
+
+      try {
+        const request: ProcessingRequest = {
+          model_name: selectedModel,
+          enhance_quality: true,
+          noise_reduction: true,
+          pitch_shift: 0
+        };
+
+        const response = await apiClient.processAudio(uploadedFile, request);
+        
+        const pollStatus = async () => {
+          try {
+            const status = await apiClient.getProcessingStatus(response.task_id);
+            setProcessingStatus(status);
+            
+            if (status.status === "completed" && status.result_file) {
+              const blob = await apiClient.downloadResult(status.result_file);
+              const audioUrl = URL.createObjectURL(blob);
+              setGeneratedAudioUrl(audioUrl);
+              setIsProcessing(false);
+            } else if (status.status === "failed") {
+              setError(status.message);
+              setIsProcessing(false);
+            } else {
+              setTimeout(pollStatus, 1000);
+            }
+          } catch (error) {
+            console.error("Status check failed:", error);
+            setError("Failed to check processing status");
+            setIsProcessing(false);
+          }
+        };
+
+        pollStatus();
+        
+      } catch (error) {
+        console.error("Processing failed:", error);
+        setError("Failed to start processing");
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -129,36 +178,6 @@ export default function VoiceClone() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Subtle Background Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.05),transparent_50%)]"></div>
-      
-      {/* Header */}
-      <header className="relative z-10 border-b border-white/10 bg-black/20 backdrop-blur-xl">
-        <div className="max-w-8xl mx-auto px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-blue-500/20 rounded-2xl border border-blue-400/30">
-                <Sparkles className="w-8 h-8 text-blue-400" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-blue-200 bg-clip-text text-transparent">
-                  RVC-Wiz
-                </h1>
-                <p className="text-slate-400 text-sm">AI-Powered Voice Cloning Platform</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <button className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl text-white hover:bg-white/10 transition-all duration-200 backdrop-blur-sm">
-                <Settings className="w-5 h-5 mr-2 inline" />
-                Settings
-              </button>
-              <button className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 border border-blue-400/50 rounded-xl text-white hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-lg shadow-blue-500/25">
-                <Zap className="w-5 h-5 mr-2 inline" />
-                Upgrade Pro
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* Main Layout */}
       <div className="max-w-8xl mx-auto px-8 py-12">
@@ -230,50 +249,119 @@ export default function VoiceClone() {
           <main className="col-span-6 space-y-8">
             {/* Voice Cloning Studio */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-10 backdrop-blur-xl">
-              <div className="flex items-center space-x-3 mb-10">
-                <div className="p-3 bg-blue-500/20 rounded-xl">
-                  <Mic className="w-8 h-8 text-blue-400" />
+              <div className="flex items-center justify-between mb-10">
+                <div className="flex items-center space-x-3">
+                  <div className="p-3 bg-blue-500/20 rounded-xl">
+                    <Mic className="w-8 h-8 text-blue-400" />
+                  </div>
+                  <h2 className="text-3xl font-bold text-white">Voice Cloning Studio</h2>
                 </div>
-                <h2 className="text-3xl font-bold text-white">Voice Cloning Studio</h2>
+                
+                {/* Mode Toggle */}
+                <div className="flex bg-white/10 rounded-xl p-1">
+                  <button
+                    onClick={() => setIsTextMode(false)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      !isTextMode 
+                        ? "bg-blue-500/20 text-blue-400 border border-blue-400/30" 
+                        : "text-white/70 hover:text-white"
+                    }`}
+                  >
+                    Audio Upload
+                  </button>
+                  <button
+                    onClick={() => setIsTextMode(true)}
+                    className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                      isTextMode 
+                        ? "bg-blue-500/20 text-blue-400 border border-blue-400/30" 
+                        : "text-white/70 hover:text-white"
+                    }`}
+                  >
+                    Text to Speech
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-8">
-                {/* Upload Area */}
-                <div className="border-2 border-dashed border-white/20 rounded-2xl p-16 text-center hover:border-blue-400/50 transition-colors bg-white/5">
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="audio-upload"
-                  />
-                  <label htmlFor="audio-upload" className="cursor-pointer">
-                    <div className="p-6 bg-blue-500/20 rounded-2xl w-24 h-24 mx-auto mb-6 flex items-center justify-center">
-                      <Upload className="w-12 h-12 text-blue-400" />
+                {!isTextMode ? (
+                  <>
+                    {/* Upload Area */}
+                    <div className="border-2 border-dashed border-white/20 rounded-2xl p-16 text-center hover:border-blue-400/50 transition-colors bg-white/5">
+                      <input
+                        type="file"
+                        accept="audio/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                        id="audio-upload"
+                      />
+                      <label htmlFor="audio-upload" className="cursor-pointer">
+                        <div className="p-6 bg-blue-500/20 rounded-2xl w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                          <Upload className="w-12 h-12 text-blue-400" />
+                        </div>
+                        <h3 className="text-2xl font-semibold text-white mb-3">Click to upload or drag and drop</h3>
+                        <p className="text-slate-400 text-lg">WAV, MP3, FLAC supported</p>
+                      </label>
                     </div>
-                    <h3 className="text-2xl font-semibold text-white mb-3">Click to upload or drag and drop</h3>
-                    <p className="text-slate-400 text-lg">WAV, MP3, FLAC supported</p>
-                  </label>
-                </div>
 
-                {/* Record Live */}
-                <div className="text-center">
-                  <div className="w-full h-px bg-white/10 mb-8"></div>
-                  <p className="text-slate-400 text-lg mb-6">Or Record Live</p>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleRecord}
-                    className={`px-12 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 ${
-                      isRecording 
-                        ? "bg-red-500/20 border-2 border-red-400/50 text-red-400 hover:bg-red-500/30" 
-                        : "bg-blue-500/20 border-2 border-blue-400/50 text-blue-400 hover:bg-blue-500/30"
-                    }`}
-                  >
-                    <Mic className="w-6 h-6 mr-3 inline" />
-                    {isRecording ? "Stop Recording" : "Start Recording"}
-                  </motion.button>
-                </div>
+                    {/* Record Live */}
+                    <div className="text-center">
+                      <div className="w-full h-px bg-white/10 mb-8"></div>
+                      <p className="text-slate-400 text-lg mb-6">Or Record Live</p>
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={handleRecord}
+                        className={`px-12 py-4 rounded-2xl font-semibold text-lg transition-all duration-200 ${
+                          isRecording 
+                            ? "bg-red-500/20 border-2 border-red-400/50 text-red-400 hover:bg-red-500/30" 
+                            : "bg-blue-500/20 border-2 border-blue-400/50 text-blue-400 hover:bg-blue-500/30"
+                        }`}
+                      >
+                        <Mic className="w-6 h-6 mr-3 inline" />
+                        {isRecording ? "Stop Recording" : "Start Recording"}
+                      </motion.button>
+                    </div>
+                  </>
+                ) : (
+                  /* Text to Speech Input */
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-lg font-semibold text-white mb-4">
+                        Enter text to convert to speech
+                      </label>
+                      <textarea
+                        value={textToSpeech}
+                        onChange={(e) => setTextToSpeech(e.target.value)}
+                        placeholder="Type your text here... (e.g., 'Hello, this is Rick Sanchez speaking!')"
+                        className="w-full h-32 px-6 py-4 bg-white/5 border border-white/20 rounded-2xl text-white placeholder-slate-400 focus:border-blue-400/50 focus:outline-none resize-none"
+                      />
+                      <p className="text-slate-400 text-sm mt-2">
+                        {textToSpeech.length} characters
+                      </p>
+                    </div>
+                    
+                    {/* Example prompts */}
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                      <h4 className="text-white font-semibold mb-4">Example prompts:</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          "Hello, this is Rick Sanchez speaking!",
+                          "Wubba lubba dub dub!",
+                          "I'm a scientist, not a voice actor!",
+                          "Welcome to the voice cloning revolution!"
+                        ].map((prompt, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setTextToSpeech(prompt)}
+                            className="text-left p-3 bg-white/5 hover:bg-white/10 rounded-xl text-slate-300 hover:text-white transition-colors text-sm"
+                          >
+                            "{prompt}"
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

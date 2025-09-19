@@ -316,6 +316,56 @@ async def get_voice_model_categories():
         logger.error(f"Error fetching categories: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch categories: {str(e)}")
 
+# Text-to-Speech Endpoint
+@app.post("/api/text-to-speech")
+async def process_text_to_speech(request: dict):
+    """Convert text to speech using selected voice model"""
+    try:
+        text = request.get("text", "")
+        model_name = request.get("model_name", "")
+        enhance_quality = request.get("enhance_quality", True)
+        noise_reduction = request.get("noise_reduction", True)
+        
+        if not text or not model_name:
+            raise HTTPException(status_code=400, detail="Text and model_name are required")
+        
+        # Generate a unique task ID
+        task_id = f"tts_{uuid.uuid4().hex[:12]}"
+        
+        # For now, we'll simulate the TTS processing
+        # In a real implementation, you would:
+        # 1. Load the selected voice model
+        # 2. Use a TTS engine (like TTS, Coqui TTS, or ElevenLabs API)
+        # 3. Generate the audio file
+        # 4. Save it to the outputs directory
+        
+        logger.info(f"Starting TTS processing for task {task_id}: {text[:50]}...")
+        
+        # Simulate processing time
+        await asyncio.sleep(2)
+        
+        # For demo purposes, create a placeholder result
+        result_file = f"tts_output_{task_id}.wav"
+        
+        # In a real implementation, you would save the actual generated audio
+        # For now, we'll create an empty file as a placeholder
+        output_path = os.path.join("outputs", result_file)
+        os.makedirs("outputs", exist_ok=True)
+        
+        # Create a placeholder audio file (in real implementation, this would be the generated audio)
+        with open(output_path, "wb") as f:
+            f.write(b"")  # Placeholder
+        
+        return {
+            "success": True,
+            "task_id": task_id,
+            "message": "Text-to-speech processing started"
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in text-to-speech processing: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process text-to-speech: {str(e)}")
+
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",

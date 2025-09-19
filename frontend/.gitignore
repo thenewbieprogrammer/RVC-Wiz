@@ -1,35 +1,14 @@
 # Dependencies
 node_modules/
-frontend/node_modules/
-backend/venv/
-backend/__pycache__/
-backend/*.pyc
-backend/*.pyo
-backend/*.pyd
-backend/.Python
-backend/env/
-backend/pip-log.txt
-backend/pip-delete-this-directory.txt
-backend/.tox/
-backend/.coverage
-backend/.coverage.*
-backend/.cache
-backend/nosetests.xml
-backend/coverage.xml
-backend/*.cover
-backend/*.log
-backend/.git
-backend/.mypy_cache
-backend/.pytest_cache
-backend/.hypothesis
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Build outputs
-frontend/build/
-frontend/dist/
-frontend/.cache/
-frontend/.vite/
-frontend/public/build/
-frontend/.remix/
+build/
+dist/
+public/build/
+.remix/
 
 # Environment variables
 .env
@@ -38,26 +17,13 @@ frontend/.remix/
 .env.test.local
 .env.production.local
 
-# Audio files
-backend/uploads/*
-backend/outputs/*
-!backend/uploads/.gitkeep
-!backend/outputs/.gitkeep
-
-# Model files
-backend/models/*.pth
-backend/models/*.pkl
-backend/models/*.bin
-!backend/models/.gitkeep
-
 # IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
 
-# OS files
+# OS generated files
 .DS_Store
 .DS_Store?
 ._*
@@ -67,8 +33,8 @@ ehthumbs.db
 Thumbs.db
 
 # Logs
+logs
 *.log
-logs/
 
 # Runtime data
 pids
@@ -121,6 +87,3 @@ jspm_packages/
 
 # TernJS port file
 .tern-port
-
-# Stores VSCode versions used for testing VSCode extensions
-.vscode-test

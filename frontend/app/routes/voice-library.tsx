@@ -50,13 +50,47 @@ export default function VoiceLibrary() {
         apiClient.getRickSanchezModels()
       ]);
 
-      setVoiceModels(topModelsResponse.models);
-      setFeaturedModels(featuredResponse.models);
-      setRickSanchezModels(rickResponse.models);
+      setVoiceModels(topModelsResponse.models || []);
+      setFeaturedModels(featuredResponse.models || []);
+      setRickSanchezModels(rickResponse.models || []);
 
     } catch (error) {
       console.error("Failed to load voice models:", error);
       setError("Failed to load voice models. Please try again later.");
+      
+      // Fallback to mock data if API fails
+      const mockModels: VoiceModel[] = [
+        {
+          id: "rick-sanchez-1",
+          name: "Rick Sanchez (Classic)",
+          character: "Rick Sanchez",
+          description: "The brilliant but cynical scientist from Rick and Morty",
+          download_url: "#",
+          huggingface_url: "#",
+          model_url: "#",
+          size: "245 MB",
+          epochs: 500,
+          type: "RVCv2",
+          tags: ["Male", "Adult", "Scientist", "Cynical", "English"]
+        },
+        {
+          id: "rick-sanchez-2", 
+          name: "Rick Sanchez (High Quality)",
+          character: "Rick Sanchez",
+          description: "High-quality Rick Sanchez voice model with enhanced clarity",
+          download_url: "#",
+          huggingface_url: "#",
+          model_url: "#",
+          size: "312 MB",
+          epochs: 800,
+          type: "RVCv2",
+          tags: ["Male", "Adult", "Scientist", "High Quality", "English"]
+        }
+      ];
+      
+      setVoiceModels(mockModels);
+      setFeaturedModels(mockModels);
+      setRickSanchezModels(mockModels);
     } finally {
       setLoading(false);
     }

@@ -43,6 +43,7 @@ backend/
 
 ## Setup
 
+### Windows Setup
 1. **Install dependencies**:
    ```bash
    pip install -r requirements.txt
@@ -53,10 +54,34 @@ backend/
    python main.py
    ```
 
-3. **Access the API**:
-   - API: http://localhost:8000
-   - Docs: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+### macOS Monterey Setup
+1. **Create virtual environment**:
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+3. **Run the application**:
+   ```bash
+   python main.py
+   ```
+
+### Access the API
+- **API**: http://localhost:8000
+- **Docs**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+### macOS-Specific Notes
+- Use `python3` instead of `python` on macOS
+- Virtual environment activation: `source venv/bin/activate`
+- PyTorch will use MPS (Metal Performance Shaders) on Apple Silicon Macs
+- Intel Macs will use CPU processing (slower but functional)
 
 ## Test User
 

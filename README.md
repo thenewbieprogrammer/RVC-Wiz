@@ -29,7 +29,9 @@ A modern RVC Voice Clone application with AI features, built with Remix.js front
 
 ## Quick Start
 
-> **Note for GitBash Users**: Since you're using GitBash as your default terminal in Cursor IDE, use the GitBash-specific commands below.
+> **Platform-Specific Notes**: 
+> - **Windows/GitBash Users**: Use the commands below with GitBash syntax
+> - **macOS Users**: See the [macOS Monterey Setup](#macos-monterey-setup) section for macOS-specific instructions
 
 ### Backend Setup (Python)
 
@@ -176,9 +178,59 @@ npm run dev
 - Use PowerShell or Command Prompt
 - Python virtual environment is automatically handled
 
-### macOS
-- Use Terminal
-- Ensure Python 3.8+ is installed via Homebrew or pyenv
+### macOS Monterey Setup
+
+#### Prerequisites for macOS Monterey
+- **macOS Monterey 12.0+**
+- **Node.js 18+**: Install via [nodejs.org](https://nodejs.org/) or `brew install node`
+- **Python 3.8+**: Install via `brew install python@3.11` or `brew install python@3.12`
+- **Git**: Usually pre-installed, or install via `brew install git`
+- **Homebrew**: Install from [brew.sh](https://brew.sh/) if not already installed
+
+#### macOS-Specific Backend Setup
+```bash
+# Navigate to backend directory
+cd backend
+
+# Create virtual environment (macOS uses python3)
+python3 -m venv venv
+
+# Activate virtual environment (macOS/Linux syntax)
+source venv/bin/activate
+
+# Upgrade pip (recommended)
+pip install --upgrade pip
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run the backend server
+python main.py
+```
+
+#### macOS-Specific Frontend Setup
+```bash
+# Navigate to frontend directory
+cd frontend
+
+# Install dependencies
+npm install
+
+# Run the frontend development server
+npm run dev
+```
+
+#### macOS Performance Notes
+- **Apple Silicon (M1/M2)**: PyTorch will automatically use Metal Performance Shaders (MPS) for GPU acceleration
+- **Intel Macs**: Will use CPU processing (functional but slower)
+- **Audio Processing**: Works with macOS Core Audio libraries
+- **Memory**: Ensure at least 8GB RAM for optimal performance
+
+#### macOS Troubleshooting
+1. **Python not found**: Use `python3` instead of `python`
+2. **Permission errors**: Use `sudo` for system-wide installations or use virtual environments
+3. **Port conflicts**: Kill processes using ports 3000/8000 with `lsof -ti:3000 | xargs kill -9`
+4. **Homebrew issues**: Update with `brew update && brew upgrade`
 
 ## License
 

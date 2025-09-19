@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+  
+  body {
+    @apply bg-dark-900 text-white;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 shadow-lg;
+  }
+  
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-md border border-white/10 shadow-xl;
+  }
+  
+  .glass-card {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+    box-shadow: 
+      0 8px 32px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .glass-button {
+    @apply bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-6 py-3 text-white hover:bg-white/20 transition-all duration-300;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+    box-shadow: 
+      0 4px 16px rgba(0,0,0,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  
+  .glass-button:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.1) 100%);
+    box-shadow: 
+      0 6px 20px rgba(0,0,0,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.4);
+    transform: translateY(-2px);
+  }
+  
+  .glass-input {
+    @apply bg-white/5 backdrop-blur-sm border border-white/20 rounded-xl px-4 py-3 text-white placeholder-white/50 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/30 transition-all duration-300;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 
+      0 4px 16px rgba(0,0,0,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .glass-input:focus {
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+    box-shadow: 
+      0 6px 20px rgba(14,165,233,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  
+  .glass-sidebar {
+    @apply bg-black/20 backdrop-blur-xl border-r border-white/10;
+    background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, rgba(0,0,0,0.1) 100%);
+    box-shadow: 
+      4px 0 32px rgba(0,0,0,0.3),
+      inset -1px 0 0 rgba(255,255,255,0.1);
+  }
+  
+  .glass-modal {
+    @apply bg-black/30 backdrop-blur-2xl border border-white/20 rounded-3xl shadow-2xl;
+    background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.2) 100%);
+    box-shadow: 
+      0 25px 50px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .gradient-text {
+    @apply bg-gradient-to-r from-primary-400 via-primary-500 to-primary-600 bg-clip-text text-transparent;
+    background-size: 200% 200%;
+    animation: gradient-shift 3s ease-in-out infinite;
+  }
+  
+  .neon-glow {
+    box-shadow: 
+      0 0 20px rgba(14,165,233,0.4),
+      0 0 40px rgba(14,165,233,0.2),
+      0 0 60px rgba(14,165,233,0.1);
+  }
+  
+  .neon-glow-hover:hover {
+    box-shadow: 
+      0 0 30px rgba(14,165,233,0.6),
+      0 0 60px rgba(14,165,233,0.3),
+      0 0 90px rgba(14,165,233,0.2);
+  }
+  
+  .floating {
+    animation: float 6s ease-in-out infinite;
+  }
+  
+  .pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  .glass-slider {
+    @apply bg-white/5 backdrop-blur-sm border border-white/20 rounded-full;
+    background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .glass-slider::-webkit-slider-thumb {
+    @apply bg-primary-400 rounded-full border-2 border-white/30;
+    box-shadow: 
+      0 4px 12px rgba(14,165,233,0.4),
+      inset 0 1px 0 rgba(255,255,255,0.3);
+  }
+  
+  /* Custom Dropdown Styles */
+  .custom-dropdown {
+    @apply relative;
+  }
+  
+  .custom-dropdown-button {
+    @apply w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white backdrop-blur-xl;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50;
+    @apply transition-all duration-300 flex items-center justify-between cursor-pointer;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 
+      0 4px 16px rgba(0,0,0,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .custom-dropdown-button:hover {
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+  }
+  
+  .custom-dropdown-menu {
+    @apply absolute top-full left-0 right-0 mt-2 bg-dark-800/95 border border-white/10 rounded-xl backdrop-blur-xl;
+    @apply shadow-2xl z-50 max-h-60 overflow-y-auto;
+    background: linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.8) 100%);
+    box-shadow: 
+      0 25px 50px rgba(0,0,0,0.5),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .custom-dropdown-item {
+    @apply px-4 py-3 text-white hover:bg-white/10 cursor-pointer transition-colors duration-200;
+    @apply first:rounded-t-xl last:rounded-b-xl;
+  }
+  
+  .custom-dropdown-item.selected {
+    @apply bg-primary-500/20 text-primary-400;
+  }
+  
+  /* Glass Select/Dropdown */
+  .glass-select {
+    @apply bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white backdrop-blur-xl;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50;
+    @apply transition-all duration-300 appearance-none cursor-pointer;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 
+      0 4px 16px rgba(0,0,0,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .glass-select:focus {
+    background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.04) 100%);
+    box-shadow: 
+      0 6px 20px rgba(14,165,233,0.2),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  
+  .glass-select option {
+    @apply bg-dark-800 text-white;
+  }
+  
+  /* Custom Checkbox */
+  .glass-checkbox {
+    @apply w-4 h-4 bg-white/5 border border-white/20 rounded cursor-pointer;
+    @apply focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50;
+    @apply transition-all duration-300;
+    background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%);
+    box-shadow: 
+      0 2px 8px rgba(0,0,0,0.1),
+      inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+  
+  .glass-checkbox:checked {
+    @apply bg-primary-500 border-primary-400;
+    background: linear-gradient(135deg, rgba(14,165,233,0.8) 0%, rgba(14,165,233,0.6) 100%);
+    box-shadow: 
+      0 4px 12px rgba(14,165,233,0.3),
+      inset 0 1px 0 rgba(255,255,255,0.2);
+  }
+  
+  .glass-checkbox:checked::after {
+    content: '✓';
+    @apply text-white text-xs font-bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  @keyframes gradient-shift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  
+  @keyframes pulse-glow {
+    0%, 100% { 
+      box-shadow: 
+        0 0 20px rgba(14,165,233,0.4),
+        0 0 40px rgba(14,165,233,0.2);
+    }
+    50% { 
+      box-shadow: 
+        0 0 30px rgba(14,165,233,0.6),
+        0 0 60px rgba(14,165,233,0.3);
+    }
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}

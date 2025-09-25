@@ -60,7 +60,7 @@ export interface Model {
 }
 
 export interface VoiceModel {
-  id: string;
+  id: number;
   name: string;
   character: string;
   description: string;
@@ -133,7 +133,7 @@ class ApiClient {
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await fetch(`${this.baseUrl}/upload`, {
+    const response = await fetch(`${this.baseUrl}/api/upload`, {
       method: "POST",
       body: formData,
     });
@@ -154,7 +154,7 @@ class ApiClient {
     request: ProcessingRequest
   ): Promise<{ task_id: string; status: string }> {
     return this.request<{ task_id: string; status: string }>(
-      `/process/${filename}`,
+      `/api/process?filename=${encodeURIComponent(filename)}`,
       {
         method: "POST",
         body: JSON.stringify(request),
@@ -163,11 +163,11 @@ class ApiClient {
   }
 
   async getProcessingStatus(taskId: string): Promise<ProcessingStatus> {
-    return this.request<ProcessingStatus>(`/status/${taskId}`);
+    return this.request<ProcessingStatus>(`/api/status/${taskId}`);
   }
 
   async downloadResult(filename: string): Promise<Blob> {
-    const response = await fetch(`${this.baseUrl}/download/${filename}`);
+    const response = await fetch(`${this.baseUrl}/api/download/${filename}`);
     
     if (!response.ok) {
       throw new Error(`Download failed: ${response.statusText}`);
@@ -228,6 +228,18 @@ class ApiClient {
     });
   }
 
+  async getDownloadStatus(modelId: number): Promise<{
+    success: boolean;
+    model_id: number;
+    is_downloaded: boolean;
+    download_progress: number;
+    download_error?: string;
+    local_path?: string;
+    index_path?: string;
+  }> {
+    return this.request(`/api/voice-models/${modelId}/download-status`);
+  }
+
   async deleteVoiceModel(modelId: number): Promise<{ success: boolean; message: string }> {
     return this.request<{ success: boolean; message: string }>(`/api/voice-models/${modelId}`, {
       method: "DELETE",
@@ -238,33 +250,151 @@ class ApiClient {
     return this.request<{ success: boolean; stats: any }>("/api/voice-models/stats");
   }
 
-  async getDownloadStatus(modelId: number): Promise<{ 
+  async scanExistingModels(): Promise<{ 
     success: boolean; 
-    model_id: number; 
-    is_downloaded: boolean; 
-    download_progress: number; 
-    download_error?: string; 
-    local_path?: string; 
+    message: string; 
+    registered_models: any[]; 
+    count: number; 
   }> {
     return this.request<{ 
       success: boolean; 
-      model_id: number; 
-      is_downloaded: boolean; 
-      download_progress: number; 
-      download_error?: string; 
-      local_path?: string; 
-    }>(`/api/voice-models/download-status/${modelId}`);
+      message: string; 
+      registered_models: any[]; 
+      count: number; 
+    }>("/api/voice-models/scan-existing", {
+      method: "POST",
+    });
   }
 
   // Text-to-Speech API methods
-  async processTextToSpeech(text: string, modelName: string): Promise<{ task_id: string }> {
+  async processTextToSpeech(
+    text: string, 
+    modelName: string, 
+    options?: {
+      tts_engine?: string;
+      language?: string;
+      enhance_quality?: boolean;
+      noise_reduction?: boolean;
+    }
+  ): Promise<{ task_id: string }> {
     return this.request<{ task_id: string }>("/api/text-to-speech", {
       method: "POST",
       body: JSON.stringify({
         text,
         model_name: modelName,
-        enhance_quality: true,
-        noise_reduction: true
+        enhance_quality: options?.enhance_quality ?? true,
+        noise_reduction: options?.noise_reduction ?? true,
+        tts_engine: options?.tts_engine ?? "pyttsx3",
+        language: options?.language ?? "en"
+      })
+    });
+  }
+
+  // Live Audio Processing API methods
+  async startLiveAudio(modelName: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/live-audio/start", {
+      method: "POST",
+      body: JSON.stringify({ model_name: modelName })
+    });
+  }
+
+  async stopLiveAudio(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/live-audio/stop", {
+      method: "POST"
+    });
+  }
+
+  async getLiveAudioStatus(): Promise<{ 
+    is_running: boolean; 
+    is_processing: boolean; 
+    current_model: string | null; 
+    connected_clients: number; 
+  }> {
+    return this.request<{ 
+      is_running: boolean; 
+      is_processing: boolean; 
+      current_model: string | null; 
+      connected_clients: number; 
+    }>("/api/live-audio/status");
+  }
+
+  // TTS Engine API methods
+  async getTTSVoices(): Promise<{ 
+    available_engines: string[]; 
+    voices: { [engine: string]: any[] }; 
+  }> {
+    return this.request<{ 
+      available_engines: string[]; 
+      voices: { [engine: string]: any[] }; 
+    }>("/api/tts/voices");
+  }
+
+  // RVC Model API methods
+  async getLoadedRVCModels(): Promise<{ loaded_models: string[] }> {
+    return this.request<{ loaded_models: string[] }>("/api/rvc/models/loaded");
+  }
+
+  // Microphone API methods
+  async getMicrophoneDevices(): Promise<{ success: boolean; devices: any[] }> {
+    return this.request<{ success: boolean; devices: any[] }>("/api/microphone/devices");
+  }
+
+  async selectMicrophone(deviceId: number): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/microphone/select", {
+      method: "POST",
+      body: JSON.stringify({ device_id: deviceId })
+    });
+  }
+
+  async getMicrophoneStatus(): Promise<{ success: boolean; status: any }> {
+    return this.request<{ success: boolean; status: any }>("/api/microphone/status");
+  }
+
+  async testMicrophone(deviceId?: number): Promise<{ success: boolean; result: any }> {
+    return this.request<{ success: boolean; result: any }>("/api/microphone/test", {
+      method: "POST",
+      body: JSON.stringify({ device_id: deviceId })
+    });
+  }
+
+  async getMicrophoneInfo(): Promise<{ success: boolean; info: any }> {
+    return this.request<{ success: boolean; info: any }>("/api/microphone/info");
+  }
+
+  // Live Recording API methods
+  async startLiveRecording(modelName: string): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/live-recording/start", {
+      method: "POST",
+      body: JSON.stringify({ model_name: modelName })
+    });
+  }
+
+  async stopLiveRecording(): Promise<{ success: boolean; message: string }> {
+    return this.request<{ success: boolean; message: string }>("/api/live-recording/stop", {
+      method: "POST"
+    });
+  }
+
+  async getLiveRecordingStatus(): Promise<{ success: boolean; status: any }> {
+    return this.request<{ success: boolean; status: any }>("/api/live-recording/status");
+  }
+
+  async recordAndProcess(duration: number, modelName: string): Promise<{ 
+    success: boolean; 
+    output_file?: string; 
+    message?: string; 
+    error?: string; 
+  }> {
+    return this.request<{ 
+      success: boolean; 
+      output_file?: string; 
+      message?: string; 
+      error?: string; 
+    }>("/api/live-recording/record", {
+      method: "POST",
+      body: JSON.stringify({ 
+        duration: duration, 
+        model_name: modelName 
       })
     });
   }

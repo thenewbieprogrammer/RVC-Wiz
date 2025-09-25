@@ -20,6 +20,17 @@ lxml>=4.9.0
 aiohttp>=3.9.0
 sqlalchemy>=2.0.0
 alembic>=1.12.0
+# RVC Voice Cloning Dependencies
+pyttsx3>=2.90
+gtts>=2.3.0
+faiss-cpu>=1.7.4
+noisereduce>=3.0.0
+resampy>=0.4.2
+onnxruntime>=1.15.0
+webrtcvad>=2.0.10
+# Audio Input Dependencies
+pyaudio>=0.2.11
+sounddevice>=0.4.6
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6

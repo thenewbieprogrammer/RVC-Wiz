@@ -137,7 +137,7 @@ async def upload_file(file: UploadFile = File(...)):
 @app.post("/api/process")
 async def process_audio(
     filename: str,
-    request: ProcessingRequest,
+    request: dict,
     background_tasks: BackgroundTasks
 ):
     """Process audio file with RVC model"""
@@ -149,10 +149,10 @@ async def process_audio(
         # Start processing
         result = await rvc_processor.process_audio(
             input_file_path=str(input_path),
-            model_name=request.model_name,
-            enhance_quality=request.enhance_quality,
-            noise_reduction=request.noise_reduction,
-            pitch_shift=request.pitch_shift or 0
+            model_name=request.get("model_name"),
+            enhance_quality=request.get("enhance_quality", True),
+            noise_reduction=request.get("noise_reduction", True),
+            pitch_shift=request.get("pitch_shift", 0)
         )
         
         return result
@@ -163,7 +163,7 @@ async def process_audio(
 
 # Text-to-Speech endpoint
 @app.post("/api/text-to-speech")
-async def process_text_to_speech(request: dict):
+async def process_text_to_speech(request: dict, background_tasks: BackgroundTasks):
     """Convert text to speech using selected voice model"""
     try:
         text = request.get("text", "")
@@ -174,19 +174,215 @@ async def process_text_to_speech(request: dict):
         if not text or not model_name:
             raise HTTPException(status_code=400, detail="Text and model_name are required")
         
-        # Start TTS processing
-        result = await rvc_processor.process_text_to_speech(
+        # Generate task ID
+        task_id = str(uuid.uuid4())
+        
+        # Start TTS processing in background
+        background_tasks.add_task(
+            rvc_processor.process_text_to_speech_background,
+            task_id=task_id,
             text=text,
             model_name=model_name,
             enhance_quality=enhance_quality,
-            noise_reduction=noise_reduction
+            noise_reduction=noise_reduction,
+            tts_engine=request.get("tts_engine", "pyttsx3"),
+            language=request.get("language", "en")
         )
         
-        return result
+        # Return task ID immediately
+        return {
+            "task_id": task_id,
+            "status": "processing",
+            "message": "TTS processing started"
+        }
         
     except Exception as e:
         logger.error(f"Text-to-speech processing error: {e}")
         raise HTTPException(status_code=500, detail="Text-to-speech processing failed")
+
+# Live Audio Processing endpoints
+@app.post("/api/live-audio/start")
+async def start_live_audio(request: dict):
+    """Start live audio processing with RVC model"""
+    try:
+        model_name = request.get("model_name", "")
+        if not model_name:
+            raise HTTPException(status_code=400, detail="model_name is required")
+        
+        result = await rvc_processor.start_live_audio(model_name)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Live audio start error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start live audio processing")
+
+@app.post("/api/live-audio/stop")
+async def stop_live_audio():
+    """Stop live audio processing"""
+    try:
+        result = await rvc_processor.stop_live_audio()
+        return result
+        
+    except Exception as e:
+        logger.error(f"Live audio stop error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stop live audio processing")
+
+@app.get("/api/live-audio/status")
+async def get_live_audio_status():
+    """Get live audio processing status"""
+    try:
+        status = rvc_processor.get_live_audio_status()
+        return status
+        
+    except Exception as e:
+        logger.error(f"Live audio status error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get live audio status")
+
+# TTS Engine endpoints
+@app.get("/api/tts/voices")
+async def get_tts_voices():
+    """Get available TTS voices"""
+    try:
+        voices = rvc_processor.get_available_tts_voices()
+        return voices
+        
+    except Exception as e:
+        logger.error(f"TTS voices error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get TTS voices")
+
+# RVC Model endpoints
+@app.get("/api/rvc/models/loaded")
+async def get_loaded_rvc_models():
+    """Get list of loaded RVC models"""
+    try:
+        models = rvc_processor.get_loaded_models()
+        return {"loaded_models": models}
+        
+    except Exception as e:
+        logger.error(f"Loaded models error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get loaded models")
+
+# Microphone endpoints
+@app.get("/api/microphone/devices")
+async def get_microphone_devices():
+    """Get available microphone devices"""
+    try:
+        devices = rvc_processor.get_microphone_devices()
+        return {"success": True, "devices": devices}
+        
+    except Exception as e:
+        logger.error(f"Microphone devices error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get microphone devices")
+
+@app.post("/api/microphone/select")
+async def select_microphone(request: dict):
+    """Select microphone device"""
+    try:
+        device_id = request.get("device_id")
+        if device_id is None:
+            raise HTTPException(status_code=400, detail="device_id is required")
+        
+        success = rvc_processor.select_microphone(device_id)
+        if success:
+            return {"success": True, "message": "Microphone device selected"}
+        else:
+            raise HTTPException(status_code=400, detail="Failed to select microphone device")
+        
+    except Exception as e:
+        logger.error(f"Select microphone error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to select microphone device")
+
+@app.get("/api/microphone/status")
+async def get_microphone_status():
+    """Get microphone status"""
+    try:
+        status = rvc_processor.get_microphone_status()
+        return {"success": True, "status": status}
+        
+    except Exception as e:
+        logger.error(f"Microphone status error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get microphone status")
+
+@app.post("/api/microphone/test")
+async def test_microphone(request: dict):
+    """Test microphone functionality"""
+    try:
+        device_id = request.get("device_id")
+        result = rvc_processor.test_microphone(device_id)
+        return {"success": True, "result": result}
+        
+    except Exception as e:
+        logger.error(f"Microphone test error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to test microphone")
+
+@app.get("/api/microphone/info")
+async def get_microphone_info():
+    """Get microphone system information"""
+    try:
+        info = rvc_processor.get_microphone_info()
+        return {"success": True, "info": info}
+        
+    except Exception as e:
+        logger.error(f"Microphone info error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get microphone info")
+
+# Live Recording endpoints
+@app.post("/api/live-recording/start")
+async def start_live_recording(request: dict):
+    """Start live recording with RVC processing"""
+    try:
+        model_name = request.get("model_name", "")
+        if not model_name:
+            raise HTTPException(status_code=400, detail="model_name is required")
+        
+        result = await rvc_processor.start_live_recording(model_name)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Live recording start error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to start live recording")
+
+@app.post("/api/live-recording/stop")
+async def stop_live_recording():
+    """Stop live recording"""
+    try:
+        result = await rvc_processor.stop_live_recording()
+        return result
+        
+    except Exception as e:
+        logger.error(f"Live recording stop error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to stop live recording")
+
+@app.get("/api/live-recording/status")
+async def get_live_recording_status():
+    """Get live recording status"""
+    try:
+        status = rvc_processor.get_live_recording_status()
+        return {"success": True, "status": status}
+        
+    except Exception as e:
+        logger.error(f"Live recording status error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to get live recording status")
+
+@app.post("/api/live-recording/record")
+async def record_and_process(request: dict):
+    """Record audio for specified duration and process with RVC"""
+    try:
+        duration = request.get("duration", 5.0)
+        model_name = request.get("model_name", "")
+        
+        if not model_name:
+            raise HTTPException(status_code=400, detail="model_name is required")
+        
+        if duration <= 0 or duration > 60:
+            raise HTTPException(status_code=400, detail="duration must be between 0 and 60 seconds")
+        
+        result = await rvc_processor.record_and_process(duration, model_name)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Record and process error: {e}")
+        raise HTTPException(status_code=500, detail="Failed to record and process audio")
 
 # Processing status endpoint
 @app.get("/api/status/{task_id}")
@@ -206,9 +402,15 @@ async def download_result(filename: str):
     """Download processed audio file"""
     try:
         file_path = OUTPUT_DIR / filename
+        logger.info(f"Download request for: {filename}")
+        logger.info(f"Looking for file at: {file_path}")
+        logger.info(f"File exists: {file_path.exists()}")
+        
         if not file_path.exists():
+            logger.error(f"File not found: {file_path}")
             raise HTTPException(status_code=404, detail="File not found")
         
+        logger.info(f"Successfully serving file: {filename}")
         return FileResponse(
             path=str(file_path),
             filename=filename,

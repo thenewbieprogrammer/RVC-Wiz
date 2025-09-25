@@ -35,42 +35,81 @@ class VoiceModelsService:
         model_info_col = cols[0]
         huggingface_link_col = cols[2]
 
-        # Extract model name and description
-        model_name_tag = model_info_col.find('a', class_='text-blue-500')
-        model_name = model_name_tag.text.strip() if model_name_tag else "N/A"
+        # Extract model name from the first column text
+        all_text = model_info_col.get_text(strip=True)
+        model_name = "N/A"
+        model_name_tag = None
         
-        # The description is often within the model_name_tag's parent or sibling
-        description_parts = []
-        if model_name_tag:
-            # Look for text directly within the parent div, excluding the link text
-            for content in model_name_tag.parent.children:
-                if content.name is None and content.strip() and content.strip() != model_name:
-                    description_parts.append(content.strip())
-            # Also check for siblings
-            next_sibling = model_name_tag.next_sibling
-            while next_sibling:
-                if next_sibling.name is None and next_sibling.strip():
-                    description_parts.append(next_sibling.strip())
-                next_sibling = next_sibling.next_sibling
+        if all_text:
+            # The model name is usually the first part before any parentheses or brackets
+            # Example: "Isao Sasaki (Early 60s era) (RMVPE) (100 epochs)"
+            lines = all_text.split('\n')
+            first_line = lines[0].strip()
+            
+            # Extract the main name (before first parenthesis or bracket)
+            if '(' in first_line:
+                model_name = first_line.split('(')[0].strip()
+            elif '[' in first_line:
+                model_name = first_line.split('[')[0].strip()
+            else:
+                model_name = first_line
+            
+            # Try to find a link for the model name tag
+            model_name_tag = model_info_col.find('a')
+            if not model_name_tag:
+                # Create a mock tag for consistency
+                model_name_tag = type('MockTag', (), {'get': lambda x, y: None, 'get_text': lambda: model_name})()
+        
+        # Extract description - get all text and clean it up
+        description = model_info_col.get_text(strip=True)
+        if description and description != model_name:
+            # Remove the model name from description if it's at the start
+            if description.startswith(model_name):
+                description = description[len(model_name):].strip()
+            # Clean up common patterns
+            description = description.replace('[', '').replace(']', '').strip()
+        else:
+            description = f"Voice model for {model_name}"
 
-        description = " ".join(description_parts).replace("] [", "], [").strip()
-        if description.startswith('[') and description.endswith(']'):
-            description = description[1:-1] # Remove outer brackets if present
-
-        # Extract download URL
-        download_link_tag = model_info_col.find('a', string=' Run')
-        download_url = download_link_tag['href'] if download_link_tag else "N/A"
+        # Extract download URL - look for "Run" links that contain download URLs
+        download_url = "N/A"
+        
+        # Look for "Run" links that contain download URLs
+        all_links = model_info_col.find_all('a')
+        for link in all_links:
+            href = link.get('href')
+            text = link.get_text(strip=True)
+            if text == 'Run' and href and ('easyaivoice.com' in href or 'huggingface.co' in href):
+                download_url = href
+                break
+        
+        # If no Run link found, try other selectors
+        if download_url == "N/A":
+            download_selectors = [
+                'a[href*="download"]',
+                'a[href*=".zip"]',
+                'a[href*=".pth"]',
+                'a:contains("Download")'
+            ]
+            
+            for selector in download_selectors:
+                download_link = model_info_col.select_one(selector)
+                if download_link and download_link.get('href'):
+                    download_url = download_link['href']
+                    break
         
         # Extract HuggingFace URL
-        huggingface_url_tag = huggingface_link_col.find('a')
-        huggingface_url = huggingface_url_tag['href'] if huggingface_url_tag else "N/A"
+        huggingface_url = "N/A"
+        hf_link = huggingface_link_col.find('a')
+        if hf_link and hf_link.get('href'):
+            huggingface_url = hf_link['href']
 
         # Extract ID from model_name_tag's href
         model_id = "N/A"
-        if model_name_tag and 'href' in model_name_tag.attrs:
+        if model_name_tag and model_name_tag.get('href'):
             href_parts = model_name_tag['href'].split('/')
             if len(href_parts) > 2:
-                model_id = href_parts[2] # e.g., /model/1GLI2Jlhsxt -> 1GLI2Jlhsxt
+                model_id = href_parts[2]
 
         # Extract character, epochs, type, tags, size from model_name and description
         character = "Unknown"
@@ -89,7 +128,8 @@ class VoiceModelsService:
 
         # Parse epochs, type, and tags from description or model name
         import re
-        epochs_match = re.search(r'(\d+)\s*epochs', model_name + description, re.IGNORECASE)
+        # Look for epochs in various formats: "100 epochs", "(100 epochs)", "100 epoch", "400 Epochs"
+        epochs_match = re.search(r'\(?(\d+)\s*[Ee]pochs?\)?', model_name + " " + description, re.IGNORECASE)
         if epochs_match:
             epochs = int(epochs_match.group(1))
 
@@ -112,7 +152,7 @@ class VoiceModelsService:
         
         # Extract size from HuggingFace URL if possible (not directly available in table)
         # This is a placeholder, actual size might need to be fetched from HuggingFace API or inferred
-        if "zip?download=true" in huggingface_url:
+        if huggingface_url != "N/A" and ("zip?download=true" in huggingface_url or "resolve" in huggingface_url):
             try:
                 head_response = requests.head(huggingface_url, allow_redirects=True, timeout=5)
                 content_length = head_response.headers.get('content-length')
@@ -126,6 +166,21 @@ class VoiceModelsService:
                         size = f"{size_bytes / 1024:.2f} KB"
             except requests.exceptions.RequestException:
                 pass # Ignore errors if head request fails
+        
+        # If we still don't have a size, estimate based on epochs and model type
+        if size == "N/A":
+            if epochs > 0:
+                # Rough estimation: more epochs = larger model
+                if epochs >= 800:
+                    size = "300-400 MB"
+                elif epochs >= 500:
+                    size = "200-300 MB"
+                elif epochs >= 300:
+                    size = "150-250 MB"
+                else:
+                    size = "100-200 MB"
+            else:
+                size = "150-250 MB"  # Default estimate
 
         return {
             "id": model_id,
@@ -140,6 +195,7 @@ class VoiceModelsService:
             "type": model_type,
             "tags": tags
         }
+        
 
     def fetch_top_models(self, limit: int = 50) -> List[Dict[str, any]]:
         """Fetches top voice models from the homepage."""
@@ -160,11 +216,11 @@ class VoiceModelsService:
 
     def search_models(self, query: str, limit: int = 20) -> List[Dict[str, any]]:
         """Searches for voice models based on a query."""
-        logger.info(f"Searching for models with query '{query}', limit {limit}...")
-        # voice-models.com doesn't have a direct search endpoint that returns a table.
-        # We'll fetch top models and filter them, or if a search page is found, use that.
-        # For now, we'll simulate by filtering fetched models.
-        all_models = self.fetch_top_models(limit=100) # Fetch more to search from
+        logger.info(f"🔍 Searching for models with query '{query}', limit {limit}...")
+        
+        # First, try to fetch more models from voice-models.com to get better coverage
+        logger.info(f"📡 Fetching models from voice-models.com for search...")
+        all_models = self.fetch_top_models(limit=500)  # Fetch more models for better search coverage
         
         results = []
         for model in all_models:
@@ -175,7 +231,8 @@ class VoiceModelsService:
                 results.append(model)
                 if len(results) >= limit:
                     break
-        logger.info(f"Found {len(results)} models for query '{query}'.")
+        
+        logger.info(f"✅ Found {len(results)} models for query '{query}' from voice-models.com.")
         return results
 
     def get_rick_sanchez_models(self) -> List[Dict[str, any]]:

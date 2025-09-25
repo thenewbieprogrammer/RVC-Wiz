@@ -124,3 +124,24 @@ jspm_packages/
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
+
+# Test and temporary files
+backend/test_*.py
+backend/check_*.py
+backend/debug_*.py
+backend/find_*.py
+backend/fix_*.py
+backend/monitor_*.py
+backend/populate_*.py
+backend/quick_*.py
+backend/simple_*.py
+backend/start_*.py
+backend/update_*.py
+backend/migrate_*.py
+backend/minimal_*.py
+backend/add_*.py
+backend/=*
+backend/IMPLEMENTATION_PLAN.md
+
+# RVC official (submodule)
+rvc-official/
